@@ -51,3 +51,8 @@ docs-gen
 site
 *.bak
 .idea/appInsightsSettings.xml
+
+# Added by huipeng
+.idea/other.xml
+.idea/codeStyles/Project.xml
+
