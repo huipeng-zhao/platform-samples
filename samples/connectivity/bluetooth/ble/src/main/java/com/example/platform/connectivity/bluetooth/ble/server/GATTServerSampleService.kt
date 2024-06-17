@@ -26,6 +26,7 @@ import android.bluetooth.BluetoothGattServer
 import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
@@ -36,6 +37,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelUuid
+import androidx.annotation.RequiresApi
 import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationChannelCompat
@@ -68,6 +70,7 @@ class GATTServerSampleService : Service() {
 
         const val ACTION_START_ADVERTISING = "start_ad"
         const val ACTION_STOP_ADVERTISING = "stop_ad"
+        const val ACTION_NOTIFY_CHANGED = "notify_changed"
 
         // Important: this is just for simplicity, there are better ways to communicate between
         // a service and an activity/view
@@ -88,6 +91,7 @@ class GATTServerSampleService : Service() {
             it.addCharacteristic(
                 BluetoothGattCharacteristic(
                     CHARACTERISTIC_UUID,
+                    BluetoothGattCharacteristic.PROPERTY_NOTIFY or
                     BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_READ,
                     BluetoothGattCharacteristic.PERMISSION_WRITE or BluetoothGattCharacteristic.PERMISSION_READ,
                 ),
@@ -120,6 +124,7 @@ class GATTServerSampleService : Service() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @SuppressLint("MissingPermission")
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent == null || !hasAdvertisingPermission()) {
@@ -134,6 +139,20 @@ class GATTServerSampleService : Service() {
             ACTION_STOP_ADVERTISING -> {
                 serverLogsState.value += "Stop advertising\n"
                 advertiser.stopAdvertising(SampleAdvertiseCallback)
+            }
+
+            ACTION_NOTIFY_CHANGED -> {
+                val devices = manager.getConnectedDevices(BluetoothProfile.GATT)
+                if (devices.isEmpty()) {
+                    serverLogsState.value += "NotifyChanged: No device connected\n"
+                } else {
+                    val message = intent.getStringExtra("message") ?: ""
+                    val characteristic = service.getCharacteristic(CHARACTERISTIC_UUID)
+                    devices.forEach {
+                        server.notifyCharacteristicChanged(it, characteristic, false, message.toByteArray())
+                        serverLogsState.value += "NotifyChanged: [${it.address}] $message\n"
+                    }
+                }
             }
 
             else -> throw IllegalArgumentException("Unknown action")

@@ -274,8 +274,13 @@ private fun BLEConnectEffect(
                 currentOnStateChange(state)
             }
 
+            @SuppressLint("MissingPermission")
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 super.onServicesDiscovered(gatt, status)
+                gatt.getService(SERVICE_UUID)?.getCharacteristic(CHARACTERISTIC_UUID)?.let {
+                    gatt.setCharacteristicNotification(it, true)
+                    Log.d("BLENotification", "setCharacteristicNotification for ${it.uuid}")
+                }
                 state = state.copy(services = gatt.services)
                 currentOnStateChange(state)
             }
@@ -309,6 +314,14 @@ private fun BLEConnectEffect(
                 status: Int,
             ) {
                 super.onCharacteristicRead(gatt, characteristic, value, status)
+                doOnRead(value)
+            }
+
+            override fun onCharacteristicChanged(
+                gatt: BluetoothGatt,
+                characteristic: BluetoothGattCharacteristic,
+                value: ByteArray
+            ) {
                 doOnRead(value)
             }
 

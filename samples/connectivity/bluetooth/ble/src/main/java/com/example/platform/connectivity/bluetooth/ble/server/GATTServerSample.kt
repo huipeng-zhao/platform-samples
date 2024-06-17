@@ -33,9 +33,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -76,6 +78,9 @@ internal fun GATTServerScreen() {
     var enableAdvertising by remember(enableServer) {
         mutableStateOf(enableServer)
     }
+    var notifyChanged by remember {
+        mutableIntStateOf(0)
+    }
     val logs by GATTServerSampleService.serverLogsState.collectAsState()
 
     LaunchedEffect(enableServer, enableAdvertising) {
@@ -90,6 +95,16 @@ internal fun GATTServerScreen() {
             ContextCompat.startForegroundService(context, intent)
         } else {
             context.stopService(intent)
+        }
+    }
+
+    LaunchedEffect(notifyChanged) {
+        if (notifyChanged > 0) {
+            val intent = Intent(context, GATTServerSampleService::class.java).apply {
+                action = GATTServerSampleService.ACTION_NOTIFY_CHANGED
+                putExtra("message", "$notifyChanged")
+            }
+            ContextCompat.startForegroundService(context, intent)
         }
     }
 
@@ -112,6 +127,9 @@ internal fun GATTServerScreen() {
             Button(onClick = { enableAdvertising = !enableAdvertising }, enabled = enableServer) {
                 Text(text = if (enableAdvertising) "Stop Advertising" else "Start Advertising")
             }
+        }
+        Button(onClick = { ++notifyChanged }, modifier = Modifier.align(Alignment.End), enabled = enableServer) {
+            Text("Notify Characteristic Changed")
         }
         Text(text = logs)
     }
